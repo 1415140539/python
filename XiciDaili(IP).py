@@ -76,14 +76,13 @@ def get_msg(html):
 #对数据进行存储
 
 
-def main(Lock,url,crawled,wait_crawl):
-    html = get_one_page(url)
-    L = get_url(url)
-    print(L)
+def main(Lock,url,crawled,q):
+    L,html = get_url(url)
+    L1 = []
     for i in L :
         if i not in crawled:
-            wait_crawl.append(i)
-        wait_crawl = list(set(wait_crawl))
+            L1.append(i)
+    q.put(L1)
     tbody =get_html_msg(html)
     trs = deal_table(tbody)
     for i in range(len(trs)):
@@ -94,6 +93,7 @@ def main(Lock,url,crawled,wait_crawl):
             Lock.acquire()
             save_to_file(item)
             Lock.release()
+    q.put(url)
 #得到整个网页的页码标记
 def get_url(url):
     html = get_one_page(url)
@@ -101,14 +101,16 @@ def get_url(url):
     pattern = '<a href="([/n\d]+)">[\d]+</a>'
     for url in (re.findall(pattern,html)):
         L.append('https://www.xicidaili.com'+url)
-    return  L
+    return  (L,html)
 if __name__  == "__main__":
     # 采用进程池的方式进行爬取
     # 宽度优先进行爬取
+
     SLEEP = 2
     p = pool.Pool(4)
     manager = Manager()
     Lock = manager.Lock()
+    queue = manager.Queue()
     my_main = functools.partial(main,Lock)
     url = 'https://www.xicidaili.com/nn/'
     itemUrls = get_url(url)
@@ -121,10 +123,11 @@ if __name__  == "__main__":
     while wait_crawl:
         url = wait_crawl.pop(0) #从开头弹出一个url
         print("正在爬取"+url)
-        p.apply_async(my_main,args=(url,crawled,wait_crawl))
-        time.sleep(SLEEP)
-        crawled.append(url)
+        p.apply_async(my_main,args=(url,crawled,queue))
+        wait_crawl.extend(queue.get())
+        wait_crawl = list(set(wait_crawl))
+        time.sleep(5)
+        crawled.append(queue.get())
     # p.apply_async(my_main(url))
-
     p.close()
     p.join()
