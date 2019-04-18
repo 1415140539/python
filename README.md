@@ -7,7 +7,3 @@
 4. 稍微高级的联系，比如框架(scrapy)
 5。3月份把scrapy的官方文档看完
 
-
-
-XiciDaili.py爬取的是代理服务的IP
-weibo 信息还没有提取出来
